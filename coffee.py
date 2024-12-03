@@ -105,10 +105,10 @@ y = df_cleaned[outputs]
 # Model for hyperparameter tweaking
 model = RandomForestRegressor(random_state=42)
 param_grid = {
-    'n_estimators': [20, 50, 100, 200],
+    'n_estimators': [i for i in range(50, 200, 10)],
     'max_depth': [5, 10, 15, 20],
-    'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [1, 2, 4],
+    'min_samples_split': [2, 3, 4, 5],
+    'min_samples_leaf': [1, 2, 4, 6],
     'max_features': ['sqrt', 'log2'],
     'bootstrap': [True, False],
 }
@@ -137,6 +137,7 @@ print(f"Best Parameters: {best_params}")
 print(f"Best Mean CV Error: {best_score}")
 print(f"Mean Squared Error (MSE): {mse}")
 print(f"Percentage Error: {percentage_error}%")
+print()
 
 # Train the model
 # TODO: what amount of estimators do we need? 
@@ -166,13 +167,13 @@ def objective(params):
         'coffee_machine': [coffee_machine],
         'coffee_grinder': [coffee_grinder],
         'stove_type': [stove_type],
-        'heat_setting': [heat_setting],
+        # 'heat_setting': [heat_setting],
         'coffee_category': [coffee_category],
         'coffee_roasted_days_ago': [coffee_roasted_days_ago],
         'coffee_dose': [coffee_dose],
         'grind_size': [grind_size],
         'water_filtered': [water_filtered],
-        'water_weight': [water_weight]
+        # 'water_weight': [water_weight]
     }
 
     input_df = pd.DataFrame(input_data)
@@ -205,9 +206,9 @@ search_space = [
     Categorical([categorical_schema['coffee_category']['JUKIA_PARK-UGANDA;SL-14;NATURAL_ANAEROBIC;MEDIUM']], name='coffee_category'),
     # Only the amount of days that we've available for now
     Integer(6, 30, name='coffee_roasted_days_ago'),
-    Real(10, 22, name='coffee_dose'),
+    Real(13, 22, name='coffee_dose'),
     # It's possible to grind up to 8, but this doesn't make any sence.
-    Real(0.1, 2.0, name='grind_size'),
+    Real(0.6, 1.2, name='grind_size'),
     Categorical([*categorical_schema['water_filtered'].values()], name='water_filtered'),
     # Real(110, 130, name='water_weight')
 ]
