@@ -45,7 +45,7 @@ for col in label_columns:
     df[col] = [categorical_schema[col][value] for value in df[col]]
 
 # Define Inputs and Outputs
-inputs = ['coffee_machine', 'coffee_grinder', 'stove_type', 'coffee_category', 'coffee_roasted_days_ago', 'coffee_dose', 'grind_size', 'water_filtered']
+inputs = ['coffee_machine', 'coffee_grinder', 'stove_type', 'coffee_category', 'coffee_roasted_days_ago', 'coffee_dose', 'sprays_before_grinding', 'grind_size', 'water_filtered']
 outputs = ['pre-infusion_time', 'extraction_time', 'total_brew_time', 'taste_score', 'bitterness_score', 'sourness_score', 'aroma_intensity', 'crema_quality']
 
 # Normalize numerical features
@@ -109,11 +109,11 @@ param_grid = {
     'max_depth': [5, 10, 15, 20],
     'min_samples_split': [2, 3, 4, 5],
     'min_samples_leaf': [1, 2, 4, 6],
-    'max_features': ['sqrt', 'log2'],
+    'max_features': ['sqrt', 'log2', None],
     'bootstrap': [True, False],
 }
 loo = LeaveOneOut()
-grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=loo, n_jobs=-1, scoring='neg_mean_squared_error')
+grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=loo, n_jobs=-5, scoring='neg_mean_squared_error')
 grid_search.fit(X, y)
 
 # Get the best parameters and best score
@@ -160,7 +160,7 @@ for train_index, test_index in loo.split(X):
 
 def objective(params):
     # Extract parameters from the input list
-    coffee_machine, coffee_grinder, stove_type, coffee_category, coffee_roasted_days_ago, coffee_dose, grind_size, water_filtered = params
+    coffee_machine, coffee_grinder, stove_type, coffee_category, coffee_roasted_days_ago, coffee_dose, sprays_before_grinding, grind_size, water_filtered = params
 
     # Create the input dataframe for prediction
     input_data = {
@@ -171,6 +171,7 @@ def objective(params):
         'coffee_category': [coffee_category],
         'coffee_roasted_days_ago': [coffee_roasted_days_ago],
         'coffee_dose': [coffee_dose],
+        'sprays_before_grinding': [sprays_before_grinding],
         'grind_size': [grind_size],
         'water_filtered': [water_filtered],
         # 'water_weight': [water_weight]
@@ -191,11 +192,14 @@ def objective(params):
     aronma_intensity = prediction[0][6]
     creama_quality = prediction[0][7] 
 
-    sourness_penalty = sourness_score ** 1.55 if sourness_score > 5.5 else 0 
-    bitterness_penalty = bitterness_score ** 1.55 if bitterness_score > 6.0 else 0
+    sourness_potential_bonus = -10
+    bitterness_potential_bonus = -15
+    sourness_score = sourness_score ** 1.85 if sourness_score > 5.5 else sourness_potential_bonus if sourness_score > 4.5 else 0
+    bitterness_score = bitterness_score ** 1.55 if bitterness_score > 6.2 else bitterness_potential_bonus if bitterness_score > 5.0 else 0
+    bonus_score = -15 if sourness_potential_bonus + bitterness_potential_bonus == sourness_score + bitterness_score else 0
 
     # (minimizing the negative is equivalent to maximizing the positive)
-    return -((0.9 * taste_score) + (0.1 * creama_quality)) * 5 + sourness_penalty + bitterness_penalty
+    return -((0.9 * taste_score) + (0.1 * creama_quality)) * 5 + sourness_score + bitterness_score + bonus_score
 
 # TODO: We can limit this to only contain the devices / coffee etc what we currently have, but still train the model on all the data :)
 search_space = [
@@ -205,8 +209,9 @@ search_space = [
     # Integer(80, 100, name='heat_setting'),
     Categorical([categorical_schema['coffee_category']['JUKIA_PARK-UGANDA;SL-14;NATURAL_ANAEROBIC;MEDIUM']], name='coffee_category'),
     # Only the amount of days that we've available for now
-    Integer(6, 30, name='coffee_roasted_days_ago'),
+    Integer(9, 30, name='coffee_roasted_days_ago'),
     Real(13, 22, name='coffee_dose'),
+    Integer(0, 2, name='sprays_before_grinding'),
     # It's possible to grind up to 8, but this doesn't make any sence.
     Real(0.6, 1.2, name='grind_size'),
     Categorical([*categorical_schema['water_filtered'].values()], name='water_filtered'),
